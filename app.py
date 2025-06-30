@@ -278,10 +278,37 @@ def analyze_meeting_content(transcript: str) -> Dict[str, Any]:
 def create_visual_summary(summary: str, title: str) -> str:
     """Create visual summary using DALL-E 3"""
     try:
-        # Create a prompt for visual summary
-        visual_prompt = f"""Create a professional business infographic that represents the key points of this meeting summary: {summary[:500]}
-        Style: Clean, modern, corporate infographic with icons and visual elements representing meeting outcomes, decisions, and action items.
-        Include: Charts, arrows, icons for teamwork, decisions, and progress. Use a professional color scheme."""
+        # Extract key themes for better visual representation
+        key_themes = []
+        action_count = summary.lower().count('action') + summary.lower().count('task') + summary.lower().count('follow')
+        decision_count = summary.lower().count('decision') + summary.lower().count('decide') + summary.lower().count('agreed')
+        
+        # Create a focused prompt for visual summary
+        if 'AI' in summary or 'artificial intelligence' in summary.lower():
+            visual_prompt = """Create a professional business illustration showing AI and technology themes. 
+            Style: Modern flat design with blue and white color scheme. 
+            Elements: Interconnected nodes, brain/AI symbols, data flow arrows, and corporate meeting imagery. 
+            Composition: Clean, minimalist design without any text or words."""
+        elif 'product' in summary.lower() or 'development' in summary.lower():
+            visual_prompt = """Create a professional business illustration showing product development and planning themes.
+            Style: Modern flat design with blue and green color scheme.
+            Elements: Growth charts, product roadmap symbols, collaboration icons, and innovation imagery.
+            Composition: Clean, minimalist design without any text or words."""
+        elif action_count > 2:
+            visual_prompt = """Create a professional business illustration showing task management and action items.
+            Style: Modern flat design with blue and orange color scheme.
+            Elements: Checkboxes, task flow arrows, timeline elements, and team collaboration symbols.
+            Composition: Clean, minimalist design without any text or words."""
+        elif decision_count > 1:
+            visual_prompt = """Create a professional business illustration showing decision-making and leadership themes.
+            Style: Modern flat design with blue and purple color scheme.
+            Elements: Decision trees, pathway arrows, leadership symbols, and strategic planning imagery.
+            Composition: Clean, minimalist design without any text or words."""
+        else:
+            visual_prompt = """Create a professional business illustration showing corporate meeting and collaboration themes.
+            Style: Modern flat design with blue and gray color scheme.
+            Elements: Meeting table, handshake symbols, communication icons, and teamwork imagery.
+            Composition: Clean, minimalist design without any text or words."""
         
         response = openai.Image.create(
             prompt=visual_prompt,
