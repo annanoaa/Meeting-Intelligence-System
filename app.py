@@ -135,14 +135,14 @@ def process_meeting_audio(file_path: str, title: str, attendees: str) -> int:
         # Step 1: Transcribe audio using Whisper API
         logger.info("Starting audio transcription...")
         with open(file_path, 'rb') as audio_file:
-            transcription = openai.audio.transcriptions.create(
+            transcription = openai.Audio.transcribe(
                 model="whisper-1",
                 file=audio_file,
                 response_format="verbose_json"
             )
         
-        transcript_text = transcription.text
-        duration = transcription.duration if hasattr(transcription, 'duration') else 0
+        transcript_text = transcription['text']
+        duration = transcription.get('duration', 0)
         
         # Step 2: Analyze content using GPT-4
         logger.info("Analyzing meeting content...")
@@ -217,7 +217,7 @@ def analyze_meeting_content(transcript: str) -> Dict[str, Any]:
     ]
     
     # Analyze the transcript
-    response = openai.chat.completions.create(
+    response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
             {
@@ -242,7 +242,7 @@ def analyze_meeting_content(transcript: str) -> Dict[str, Any]:
     )
     
     # Create summary
-    summary_response = openai.chat.completions.create(
+    summary_response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
             {
@@ -258,15 +258,15 @@ def analyze_meeting_content(transcript: str) -> Dict[str, Any]:
     )
     
     analysis = {
-        'summary': summary_response.choices[0].message.content,
+        'summary': summary_response['choices'][0]['message']['content'],
         'action_items': [],
         'decisions': []
     }
     
     # Process function calls if any
-    if response.choices[0].message.function_call:
-        function_name = response.choices[0].message.function_call.name
-        function_args = json.loads(response.choices[0].message.function_call.arguments)
+    if response['choices'][0]['message'].get('function_call'):
+        function_name = response['choices'][0]['message']['function_call']['name']
+        function_args = json.loads(response['choices'][0]['message']['function_call']['arguments'])
         
         if function_name == "extract_action_items":
             analysis['action_items'] = function_args.get('action_items', [])
@@ -283,16 +283,14 @@ def create_visual_summary(summary: str, title: str) -> str:
         Style: Clean, modern, corporate infographic with icons and visual elements representing meeting outcomes, decisions, and action items.
         Include: Charts, arrows, icons for teamwork, decisions, and progress. Use a professional color scheme."""
         
-        response = openai.images.generate(
-            model="dall-e-3",
+        response = openai.Image.create(
             prompt=visual_prompt,
             size="1024x1024",
-            quality="standard",
             n=1
         )
         
         # Download and save the image
-        image_url = response.data[0].url
+        image_url = response['data'][0]['url']
         import requests
         img_response = requests.get(image_url)
         
@@ -348,12 +346,12 @@ def create_meeting_embeddings(meeting_id: int, transcript: str):
     
     for i, chunk in enumerate(chunks):
         # Create embedding using OpenAI Embeddings API
-        response = openai.embeddings.create(
+        response = openai.Embedding.create(
             model="text-embedding-ada-002",
             input=chunk
         )
         
-        embedding = response.data[0].embedding
+        embedding = response['data'][0]['embedding']
         embedding_blob = np.array(embedding).tobytes()
         
         cursor.execute('''
@@ -433,12 +431,12 @@ def semantic_search():
             return jsonify({'error': 'Query is required'}), 400
         
         # Create embedding for search query
-        response = openai.embeddings.create(
+        response = openai.Embedding.create(
             model="text-embedding-ada-002",
             input=query
         )
         
-        query_embedding = np.array(response.data[0].embedding)
+        query_embedding = np.array(response['data'][0]['embedding'])
         
         # Search similar chunks
         conn = sqlite3.connect('meetings.db')
