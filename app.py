@@ -142,7 +142,25 @@ def process_meeting_audio(file_path: str, title: str, attendees: str) -> int:
             )
         
         transcript_text = transcription['text']
+        
+        # Calculate duration properly (OpenAI 0.28 API format)
         duration = transcription.get('duration', 0)
+        
+        # Convert duration to minutes if it's in seconds
+        if duration > 60:  # Likely in seconds, convert to minutes
+            duration = round(duration / 60, 1)
+            logger.info(f"Converted duration from seconds to minutes: {duration}")
+        
+        # If duration is still 0 or seems wrong, estimate from audio file
+        if duration == 0 or duration > 1000:
+            try:
+                import os
+                file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+                # Rough estimate: 1MB ≈ 1 minute for typical audio compression
+                duration = max(1, round(file_size_mb, 1))
+                logger.info(f"Estimated duration from file size: {duration} minutes")
+            except:
+                duration = 5  # Default fallback
         
         # Step 2: Analyze content using GPT-4
         logger.info("Analyzing meeting content...")
@@ -283,32 +301,17 @@ def create_visual_summary(summary: str, title: str) -> str:
         action_count = summary.lower().count('action') + summary.lower().count('task') + summary.lower().count('follow')
         decision_count = summary.lower().count('decision') + summary.lower().count('decide') + summary.lower().count('agreed')
         
-        # Create a focused prompt for visual summary
+        # Create a simple, clean prompt for visual summary
         if 'AI' in summary or 'artificial intelligence' in summary.lower():
-            visual_prompt = """Create a professional business illustration showing AI and technology themes. 
-            Style: Modern flat design with blue and white color scheme. 
-            Elements: Interconnected nodes, brain/AI symbols, data flow arrows, and corporate meeting imagery. 
-            Composition: Clean, minimalist design without any text or words."""
+            visual_prompt = """A minimal flat design illustration of AI and technology concepts. Blue and white color palette. Simple geometric shapes representing neural networks, connected nodes, and data flow. No text, no labels, no words. Pure abstract geometric design."""
         elif 'product' in summary.lower() or 'development' in summary.lower():
-            visual_prompt = """Create a professional business illustration showing product development and planning themes.
-            Style: Modern flat design with blue and green color scheme.
-            Elements: Growth charts, product roadmap symbols, collaboration icons, and innovation imagery.
-            Composition: Clean, minimalist design without any text or words."""
+            visual_prompt = """A minimal flat design illustration showing growth and development concepts. Blue and green color palette. Simple geometric shapes like ascending bars, upward arrows, and interconnected circles. No text, no labels, no words. Pure abstract geometric design."""
         elif action_count > 2:
-            visual_prompt = """Create a professional business illustration showing task management and action items.
-            Style: Modern flat design with blue and orange color scheme.
-            Elements: Checkboxes, task flow arrows, timeline elements, and team collaboration symbols.
-            Composition: Clean, minimalist design without any text or words."""
+            visual_prompt = """A minimal flat design illustration showing task and workflow concepts. Blue and orange color palette. Simple geometric shapes like checkmarks, arrows, and connected boxes in a flowing pattern. No text, no labels, no words. Pure abstract geometric design."""
         elif decision_count > 1:
-            visual_prompt = """Create a professional business illustration showing decision-making and leadership themes.
-            Style: Modern flat design with blue and purple color scheme.
-            Elements: Decision trees, pathway arrows, leadership symbols, and strategic planning imagery.
-            Composition: Clean, minimalist design without any text or words."""
+            visual_prompt = """A minimal flat design illustration showing decision and strategy concepts. Blue and purple color palette. Simple geometric shapes like branching paths, decision nodes, and directional arrows. No text, no labels, no words. Pure abstract geometric design."""
         else:
-            visual_prompt = """Create a professional business illustration showing corporate meeting and collaboration themes.
-            Style: Modern flat design with blue and gray color scheme.
-            Elements: Meeting table, handshake symbols, communication icons, and teamwork imagery.
-            Composition: Clean, minimalist design without any text or words."""
+            visual_prompt = """A minimal flat design illustration showing teamwork and collaboration concepts. Blue and gray color palette. Simple geometric shapes like interlocking circles, connecting lines, and grouped elements. No text, no labels, no words. Pure abstract geometric design."""
         
         response = openai.Image.create(
             prompt=visual_prompt,
